@@ -1,0 +1,98 @@
+---
+title: "Imputation"
+author: "Team 47"
+date: "11/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Description of missing values
+
+The following chunk will output the number of missing variables in each of the columns
+```{r}
+train=cs.training
+nas <- list()
+for (i in 1:ncol(train)) {
+nas[[i]] <- which(is.na(train[,i]))
+}
+lapply(nas, length)
+vars.imp <- which(lapply(nas, length)>0)
+```
+We see that all of the missing values are located in two columns: column 7 and column 12.
+
+## Imputation using medians + a "missing" explanatory variable
+
+The first chunk imputates the training set + adds an explanatory variable indicating whether the corresponding row had a missing variable. The second one does the same with the testing set.
+```{r}
+train = cs.training
+train_missing = train
+missing=!complete.cases(train)
+sum(missing)/length(missing) #percentage of rows with missing entries
+mean(train$MonthlyIncome[!missing])
+median(train$MonthlyIncome[!missing])
+
+#The mean is much more heavily affected by outliers than the median, so we substitute the NAs with the median
+median_income=median(train$MonthlyIncome[!missing])
+train$MonthlyIncome[missing]=median_income
+missingnow=!complete.cases(train)
+sum(missingnow)/length(missingnow) #percentage of rows still with missing entries
+
+median_dependents=median(train$NumberOfDependents[!missing])
+train$NumberOfDependents[missing]=median_dependents
+
+missinghowaboutnow=!complete.cases(train)
+sum(missinghowaboutnow) #number of rows that still have missing entries
+train$MissingEntries=as.numeric(missing) #Add variable indicating if row originally had missing entries
+train_missing
+train #The new imputated data frame
+```
+
+```{r}
+test = cs.test
+test_missing = test
+explanatory_test=test[,-2] #Since all the entries in the response variable are NA, this is a new dataframe without that column
+newmissing=!complete.cases(explanatory_test)
+sum(newmissing)/length(newmissing) #percentage of rows with missing entries
+median(explanatory_test$MonthlyIncome[!newmissing])
+
+#The mean is much more heavily affected by outliers than the median, so we substitute the NAs with the median
+newmedian_income=(length(explanatory_test[,1])*median(explanatory_test$MonthlyIncome[!newmissing])+length(train[,1])*median_income)/(length(explanatory_test[,1])+length(train[,1]))#Weighted average of the medians of the test and training datasets
+explanatory_test$MonthlyIncome[newmissing]=newmedian_income
+
+newmissingnow=!complete.cases(explanatory_test)
+sum(newmissingnow)/length(newmissingnow) #percentage of rows still with missing entries
+newmedian_dependents=(length(explanatory_test[,1])*median(explanatory_test$NumberOfDependents[!newmissing])+median_dependents)/(length(explanatory_test[,1])+length(train[,1]))#Weighted average of the medians of the test and training datasets
+explanatory_test$NumberOfDependents[newmissing]=newmedian_dependents
+
+newmissinghowaboutnow=!complete.cases(explanatory_test)
+sum(newmissinghowaboutnow) #number of rows that still have missing entries
+
+test$MissingEntries=as.numeric(newmissing) #Add variable indicating if row originally had missing entries
+test$MonthlyIncome=explanatory_test$MonthlyIncome #Now that we performed analysis on proxy data frame, we incorporate results to the old one
+test$NumberOfDependents=explanatory_test$NumberOfDependents
+test_missing #The original data frame with missing values
+test #The new imputated data frame
+```
+
+## Imputation via backfitting-like regression
+
+The following chunk cycles through the columns with missing values. At each step, it uses the rest of the explanatory variables to make a prediction for what the missing value would be and continues to cycle until the new regressions are the same as the old ones. I see that after 5 iterations, the algorithm has converged.
+
+
+```{r}
+preds.imp=train
+var.change=1 #Change this index to track the evolution of a different imputated variable
+change <- c() #We can use this matrix to see the evolution of the variable selected above
+for (k in 1:5) {
+for (i in 1:length(vars.imp)) {
+j <- vars.imp[i] #The variable that we're imputating in this loop
+temp.data <- preds.imp[-nas[[j]],]
+names(temp.data)[j] <- 'y'
+preds.imp[nas[[j]],j] <- predict(lm(y~., data=temp.data), newdata=preds.imp[nas[[j]],])
+}
+change <- cbind(change, preds.imp[nas[[vars.imp[var.change]]],vars.imp[var.change]]) #Add column with new values for the var.changeth variable
+}
+change #We see that after 5 iterations for k, the regression is not changing the values -- it has converged
+```
