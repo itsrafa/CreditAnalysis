@@ -1,0 +1,29 @@
+---
+title: "Random Forests"
+author: "Team47"
+date: "11/10/2020"
+output: html_document
+---
+
+**Random Forests (Gini Impurity)**
+```{r}
+library(randomForest)
+ginifit.rf <- tuneRF(trainingData, trainingY, ntreeTry=100, stepFactor=1.7, improve=0.05,
+       trace=TRUE, plot=TRUE, doBest=TRUE)
+```
+
+**Random Forest AUC**
+```{r}
+library(ROCR)
+#factor of predictions
+rf_p <- predict(ginifit.rf, type="prob")[,2]
+#prediction object
+rf_pr <- prediction(rf_p, trainingY)
+#performance to plot 
+rf_perf <- performance(rf_pr,"tpr","fpr")
+plot(rf_perf)
+#auc of random forest
+rf_auc <- performance(rf_pr, measure = "auc")
+rf_auc <- rf_auc@y.values[[1]]
+rf_auc
+```
