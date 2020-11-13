@@ -1,2 +1,4 @@
 # CreditAnalysis
-Binary classification predicting default of a client based on explanatory variables such as age, monthly income, number of dependents and information about their credit history.
+Binary classification predicting default of a client based on explanatory variables such as age, monthly income, number of dependents and information about their credit history. Attached are the different RMarkdown files that we used to perform this classification problem. Before performing any analysis, we imputated the data via two methods.
+The first consisted of simply filling in the missing values with the medians of the same explanatory variable in the other observations and adding an explanatory variable indicating whether an observation had any value missing. The second one consisted of a regression of the missing gaps with an iteration similar to the back-fitting algorithm.
+We tried using three learners: a support vector machine, a generalized linear model and a random forest. We found that the best performance on the training set (in terms of the AUC of the ROC) was given by the random forests, so we recommend the use of that learner. 
