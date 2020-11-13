@@ -1,0 +1,44 @@
+---
+title: "GLM"
+author: "Team 47"
+date: "November 12, 2020"
+output: html_document
+---
+
+```{r}
+# Loading the library
+library(glmnet)
+
+glm_model <- glm(SeriousDlqin2yrs~.,data = train, family = 'binomial')
+summary(glm_model)
+plot(glm_model)
+```
+```{r}
+summary(glm_model)
+```
+```{r}
+install.packages("ResourceSelection")
+library(ResourceSelection)
+
+#How well our model fits depends on the difference between the model and the observed data.  One approach for binary data is to implement a Hosmer Lemeshow goodness of fit test.
+hoslem.test(train$SeriousDlqin2yrs, fitted(glm_model))
+
+```
+
+
+```{r}
+#glm_prob <- predict.glm(glm_model,test,type='response')
+#glm_prob
+
+x <- model.matrix(SeriousDlqin2yrs~.,train)
+y <- ifelse(train$SeriousDlqin2yrs=='pos',1,0)
+
+cv.out <- cv.glmnet(x,y,alpha=1,family='binomial',type.measure = 'mse' )
+plot(cv.out)
+
+```
+
+
+
+
+
