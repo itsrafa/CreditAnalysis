@@ -1,0 +1,62 @@
+---
+title: "SVM"
+author: "Team 47"
+date: "November 12, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Support Vector Machine
+
+The following code runs a support vector machine 
+
+```{r}
+library(e1071)
+train[,-2] <- as.data.frame(train[,-2])
+train[,2] <- as.factor(train[,2])
+```
+
+```{r}
+trainingData <- train[, -2]
+trainingData <-trainingData[,-1]
+trainingY <- as.factor(train[, 2])
+```
+
+```{r}
+#svm.cv <- tune(svm, trainingData, trainingY, ranges = list(gamma = 2^(-2:0), cost = 2^(-2:1)), tunecontrol = tune.control(sampling = "fix"))
+fit.svm <- svm(as.factor(train[,2])~., data=trainingData, cost=svm.cv$best.parameters[1,2], kernel="linear", gamma=svm.cv$best.parameters[1,1]) # formula: y predicted by everything else, the dot
+fit.svm <- svm(as.factor(train[,2])~., data=trainingData, kernel="linear") 
+fit.svm$fitted
+# as.factor makes it not interpreted as numerical values
+table(as.factor(fit.svm$fitted), as.factor(train[,2])) # no misclassifications!
+```
+
+```{r}
+testData <- test[, -c(1,2)]
+a <- as.factor(predict(fit.svm, testData))
+a
+```
+## AUC
+
+```{r}
+dv <- fit.svm$decision.values
+tp <- c() -> fp #initialize true and false positive vectors ks <- seq(min(dv), max(dv),length.out=100)
+for (i in 1:100){
+k <- ks[i]
+tp[i] <- mean(dv[which(trainingY==1)] > k)
+fp[i] <- mean(dv[which(trainingY==0)] > k)
+}
+plot(fp,tp, t='l')
+abline(0,1)
+```
+
+```{r}
+library(zoo)
+x=fp
+y=tp
+id=order(x)
+AUC <- sum(diff(x[id])*rollmean(y[id],2))
+```
